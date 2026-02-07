@@ -1,0 +1,35 @@
+# Dependencies
+node_modules/
+bun.lockb
+
+# Next.js
+.next/
+out/
+
+# Environment
+.env
+.env.local
+
+# Logs
+*.log
+
+# Testing
+coverage/
+
+# IDE
+.vscode/
+.idea/
+
+# OS
+.DS_Store
+
+# Git
+.git/
+.gitignore
+
+# Agent
+.agent/
+
+# Documentation
+README.md
+LICENSE
