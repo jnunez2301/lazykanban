@@ -47,11 +47,11 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-background">
       <Navbar />
       <div className="flex h-[calc(100vh-4rem)]">
-        {currentMode === "dev" && <Sidebar />}
+        {currentMode === "advanced" && <Sidebar />}
         <main
           className={cn(
             "flex-1 overflow-auto p-4 md:p-6 transition-all duration-300",
-            currentMode === "dev" && "md:ml-64"
+            currentMode === "advanced" && "md:ml-64"
           )}
         >
           {children}

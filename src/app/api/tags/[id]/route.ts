@@ -21,23 +21,43 @@ async function handlePATCH(req: AuthRequest, { params }: Params) {
     const body = await req.json();
     const validatedData = updateTagSchema.parse(body);
 
-    // Check permission
-    const [permissions] = await db.query<RowDataPacket[]>(
-      `SELECT p.can_manage_tags
+    // Check permission - owner OR can_manage_tags
+    // Get tag's project to check ownership
+    const [tagInfo] = await db.query<RowDataPacket[]>(
+      `SELECT t.project_id, pr.owner_id 
        FROM tags t
        JOIN projects pr ON t.project_id = pr.id
-       JOIN \`groups\` g ON g.project_id = pr.id
-       JOIN group_members gm ON gm.group_id = g.id
-       JOIN permissions p ON p.group_id = g.id
-       WHERE t.id = ? AND gm.user_id = ? AND (pr.owner_id = ? OR p.can_manage_tags = true)`,
-      [id, userId, userId]
+       WHERE t.id = ?`,
+      [id]
     );
 
-    if (permissions.length === 0) {
+    if (tagInfo.length === 0) {
       return NextResponse.json(
-        { error: "Permission denied" },
-        { status: 403 }
+        { error: "Tag not found" },
+        { status: 404 }
       );
+    }
+
+    const isOwner = tagInfo[0].owner_id === userId;
+
+    if (!isOwner) {
+      // If not owner, check if user has permission through their group
+      const [permissions] = await db.query<RowDataPacket[]>(
+        `SELECT p.can_manage_tags
+         FROM projects pr
+         JOIN \`groups\` g ON g.project_id = pr.id
+         JOIN group_members gm ON gm.group_id = g.id
+         JOIN permissions p ON p.group_id = g.id
+         WHERE pr.id = ? AND gm.user_id = ? AND p.can_manage_tags = true`,
+        [tagInfo[0].project_id, userId]
+      );
+
+      if (permissions.length === 0) {
+        return NextResponse.json(
+          { error: "Permission denied - cannot manage tags" },
+          { status: 403 }
+        );
+      }
     }
 
     const updates: string[] = [];
@@ -95,26 +115,46 @@ async function handleDELETE(req: AuthRequest, { params }: Params) {
     const { id } = await params;
     const userId = req.user!.userId;
 
-    // Check permission
-    const [permissions] = await db.query<RowDataPacket[]>(
-      `SELECT p.can_manage_tags, t.is_default
+    // Check permission - owner OR can_manage_tags
+    // Get tag's project and check if it's default
+    const [tagInfo] = await db.query<RowDataPacket[]>(
+      `SELECT t.project_id, t.is_default, pr.owner_id 
        FROM tags t
        JOIN projects pr ON t.project_id = pr.id
-       JOIN \`groups\` g ON g.project_id = pr.id
-       JOIN group_members gm ON gm.group_id = g.id
-       JOIN permissions p ON p.group_id = g.id
-       WHERE t.id = ? AND gm.user_id = ? AND (pr.owner_id = ? OR p.can_manage_tags = true)`,
-      [id, userId, userId]
+       WHERE t.id = ?`,
+      [id]
     );
 
-    if (permissions.length === 0) {
+    if (tagInfo.length === 0) {
       return NextResponse.json(
-        { error: "Permission denied" },
-        { status: 403 }
+        { error: "Tag not found" },
+        { status: 404 }
       );
     }
 
-    if (permissions[0].is_default) {
+    const isOwner = tagInfo[0].owner_id === userId;
+
+    if (!isOwner) {
+      // If not owner, check if user has permission through their group
+      const [permissions] = await db.query<RowDataPacket[]>(
+        `SELECT p.can_manage_tags
+         FROM projects pr
+         JOIN \`groups\` g ON g.project_id = pr.id
+         JOIN group_members gm ON gm.group_id = g.id
+         JOIN permissions p ON p.group_id = g.id
+         WHERE pr.id = ? AND gm.user_id = ? AND p.can_manage_tags = true`,
+        [tagInfo[0].project_id, userId]
+      );
+
+      if (permissions.length === 0) {
+        return NextResponse.json(
+          { error: "Permission denied - cannot manage tags" },
+          { status: 403 }
+        );
+      }
+    }
+
+    if (tagInfo[0].is_default) {
       return NextResponse.json(
         { error: "Cannot delete default system tags" },
         { status: 400 }

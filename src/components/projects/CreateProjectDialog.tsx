@@ -25,8 +25,13 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 
 const formSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  description: z.string().optional(),
+  name: z.string()
+    .min(3, "Name must be at least 3 characters")
+    .max(120, "Name must be less than 120 characters")
+    .regex(/^[a-zA-Z0-9\s\-_.,!()]+$/, "Name can only contain letters, numbers, spaces, and basic punctuation (- _ . , ! ())"),
+  description: z.string()
+    .max(255, "Description must be less than 255 characters")
+    .optional(),
 });
 
 interface CreateProjectDialogProps {
@@ -84,15 +89,19 @@ export function CreateProjectDialog({ open, onOpenChange }: CreateProjectDialogP
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="What is this project about?"
                       className="resize-none"
+                      maxLength={255}
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <FormMessage />
+                    <span>{field.value?.length || 0}/255</span>
+                  </div>
                 </FormItem>
               )}
             />

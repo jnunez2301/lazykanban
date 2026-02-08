@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
+import { toast } from "sonner";
 
 export interface Task {
   id: number;
@@ -92,6 +93,10 @@ export const useTasks = (projectId: string) => {
     mutationFn: (data: TaskFormData) => createTask(projectId, data, token!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      toast.success("Task created successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create task");
     },
   });
 
@@ -99,6 +104,10 @@ export const useTasks = (projectId: string) => {
     mutationFn: ({ id, data }: { id: number; data: Partial<TaskFormData> }) => updateTask(id, data, token!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      toast.success("Task updated successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update task");
     },
   });
 
@@ -106,6 +115,10 @@ export const useTasks = (projectId: string) => {
     mutationFn: (id: number) => deleteTask(id, token!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tasks", projectId] });
+      toast.success("Task deleted successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete task");
     },
   });
 

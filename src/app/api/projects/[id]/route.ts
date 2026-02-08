@@ -44,8 +44,14 @@ async function handleGET(req: AuthRequest, { params }: Params) {
 }
 
 const updateProjectSchema = z.object({
-  name: z.string().min(2).optional(),
-  description: z.string().optional(),
+  name: z.string()
+    .min(3, "Project name must be at least 3 characters")
+    .max(120, "Project name must be less than 120 characters")
+    .optional(),
+  description: z.string()
+    .max(255, "Project description must be less than 255 characters")
+    .optional(),
+  isPinned: z.boolean().optional(),
 });
 
 // Update project
@@ -56,22 +62,32 @@ async function handlePATCH(req: AuthRequest, { params }: Params) {
     const body = await req.json();
     const validatedData = updateProjectSchema.parse(body);
 
-    // Check if user has permission to edit project
-    const [permissions] = await db.query<RowDataPacket[]>(
-      `SELECT p.can_edit_project
-       FROM projects pr
-       JOIN \`groups\` g ON g.project_id = pr.id
-       JOIN group_members gm ON gm.group_id = g.id
-       JOIN permissions p ON p.group_id = g.id
-       WHERE pr.id = ? AND gm.user_id = ? AND (pr.owner_id = ? OR p.can_edit_project = true)`,
-      [id, userId, userId]
+    // Check if user is owner or has permission to edit project
+    const [ownerCheck] = await db.query<RowDataPacket[]>(
+      `SELECT id FROM projects WHERE id = ? AND owner_id = ?`,
+      [id, userId]
     );
 
-    if (permissions.length === 0) {
-      return NextResponse.json(
-        { error: "Permission denied" },
-        { status: 403 }
+    const isOwner = ownerCheck.length > 0;
+
+    if (!isOwner) {
+      // If not owner, check if user has edit permissions through their group
+      const [permissions] = await db.query<RowDataPacket[]>(
+        `SELECT p.can_edit_project
+         FROM projects pr
+         JOIN \`groups\` g ON g.project_id = pr.id
+         JOIN group_members gm ON gm.group_id = g.id
+         JOIN permissions p ON p.group_id = g.id
+         WHERE pr.id = ? AND gm.user_id = ? AND p.can_edit_project = true`,
+        [id, userId]
       );
+
+      if (permissions.length === 0) {
+        return NextResponse.json(
+          { error: "Permission denied" },
+          { status: 403 }
+        );
+      }
     }
 
     const updates: string[] = [];
@@ -85,6 +101,16 @@ async function handlePATCH(req: AuthRequest, { params }: Params) {
     if (validatedData.description !== undefined) {
       updates.push("description = ?");
       values.push(validatedData.description);
+    }
+
+    if (validatedData.isPinned !== undefined) {
+      updates.push("is_pinned = ?");
+      values.push(validatedData.isPinned);
+      if (validatedData.isPinned) {
+        updates.push("pinned_at = NOW()");
+      } else {
+        updates.push("pinned_at = NULL");
+      }
     }
 
     if (updates.length === 0) {
@@ -102,7 +128,7 @@ async function handlePATCH(req: AuthRequest, { params }: Params) {
     );
 
     const [projects] = await db.query<RowDataPacket[]>(
-      "SELECT id, name, description, owner_id FROM projects WHERE id = ?",
+      "SELECT id, name, description, owner_id, is_pinned, pinned_at, created_at, updated_at FROM projects WHERE id = ?",
       [id]
     );
 

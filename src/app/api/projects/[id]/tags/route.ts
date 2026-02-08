@@ -59,22 +59,33 @@ async function handlePOST(req: AuthRequest, { params }: Params) {
     const body = await req.json();
     const validatedData = createTagSchema.parse(body);
 
-    // Check permission - can_manage_tags
-    const [permissions] = await db.query<RowDataPacket[]>(
-      `SELECT p.can_manage_tags
-       FROM projects pr
-       JOIN \`groups\` g ON g.project_id = pr.id
-       JOIN group_members gm ON gm.group_id = g.id
-       JOIN permissions p ON p.group_id = g.id
-       WHERE pr.id = ? AND gm.user_id = ? AND (pr.owner_id = ? OR p.can_manage_tags = true)`,
-      [projectId, userId, userId]
+    // Check permission - owner OR can_manage_tags
+    // First check if user is the project owner
+    const [ownerCheck] = await db.query<RowDataPacket[]>(
+      `SELECT id FROM projects WHERE id = ? AND owner_id = ?`,
+      [projectId, userId]
     );
 
-    if (permissions.length === 0) {
-      return NextResponse.json(
-        { error: "Permission denied" },
-        { status: 403 }
+    const isOwner = ownerCheck.length > 0;
+
+    if (!isOwner) {
+      // If not owner, check if user has permission through their group
+      const [permissions] = await db.query<RowDataPacket[]>(
+        `SELECT p.can_manage_tags
+         FROM projects pr
+         JOIN \`groups\` g ON g.project_id = pr.id
+         JOIN group_members gm ON gm.group_id = g.id
+         JOIN permissions p ON p.group_id = g.id
+         WHERE pr.id = ? AND gm.user_id = ? AND p.can_manage_tags = true`,
+        [projectId, userId]
       );
+
+      if (permissions.length === 0) {
+        return NextResponse.json(
+          { error: "Permission denied - cannot manage tags" },
+          { status: 403 }
+        );
+      }
     }
 
     // Get max display order

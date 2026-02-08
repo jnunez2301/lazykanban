@@ -54,23 +54,36 @@ async function handlePATCH(req: AuthRequest, { params }: Params) {
     const body = await req.json();
     const validatedData = updateGroupSchema.parse(body);
 
-    // Check permission
-    const [permissions] = await db.query<RowDataPacket[]>(
-      `SELECT p.can_edit_project
+    // Check if user is owner or has permission to edit
+    const [ownerCheck] = await db.query<RowDataPacket[]>(
+      `SELECT pr.id
        FROM \`groups\` target_g
        JOIN projects pr ON target_g.project_id = pr.id
-       JOIN \`groups\` g ON g.project_id = pr.id
-       JOIN group_members gm ON gm.group_id = g.id
-       JOIN permissions p ON p.group_id = g.id
-       WHERE target_g.id = ? AND gm.user_id = ? AND (pr.owner_id = ? OR p.can_edit_project = true)`,
-      [id, userId, userId]
+       WHERE target_g.id = ? AND pr.owner_id = ?`,
+      [id, userId]
     );
 
-    if (permissions.length === 0) {
-      return NextResponse.json(
-        { error: "Permission denied" },
-        { status: 403 }
+    const isOwner = ownerCheck.length > 0;
+
+    if (!isOwner) {
+      // If not owner, check if user has edit permissions through their group
+      const [permissions] = await db.query<RowDataPacket[]>(
+        `SELECT p.can_edit_project
+         FROM \`groups\` target_g
+         JOIN projects pr ON target_g.project_id = pr.id
+         JOIN \`groups\` g ON g.project_id = pr.id
+         JOIN group_members gm ON gm.group_id = g.id
+         JOIN permissions p ON p.group_id = g.id
+         WHERE target_g.id = ? AND gm.user_id = ? AND p.can_edit_project = true`,
+        [id, userId]
       );
+
+      if (permissions.length === 0) {
+        return NextResponse.json(
+          { error: "Permission denied" },
+          { status: 403 }
+        );
+      }
     }
 
     const updates: string[] = [];
@@ -128,23 +141,36 @@ async function handleDELETE(req: AuthRequest, { params }: Params) {
     const { id } = await params;
     const userId = req.user!.userId;
 
-    // Check permission - strictly enforce can_edit_project for deleting groups
-    const [permissions] = await db.query<RowDataPacket[]>(
-      `SELECT p.can_edit_project
+    // Check if user is owner or has permission to delete
+    const [ownerCheck] = await db.query<RowDataPacket[]>(
+      `SELECT pr.id
        FROM \`groups\` target_g
        JOIN projects pr ON target_g.project_id = pr.id
-       JOIN \`groups\` g ON g.project_id = pr.id
-       JOIN group_members gm ON gm.group_id = g.id
-       JOIN permissions p ON p.group_id = g.id
-       WHERE target_g.id = ? AND gm.user_id = ? AND (pr.owner_id = ? OR p.can_edit_project = true)`,
-      [id, userId, userId]
+       WHERE target_g.id = ? AND pr.owner_id = ?`,
+      [id, userId]
     );
 
-    if (permissions.length === 0) {
-      return NextResponse.json(
-        { error: "Permission denied" },
-        { status: 403 }
+    const isOwner = ownerCheck.length > 0;
+
+    if (!isOwner) {
+      // If not owner, check if user has edit permissions through their group
+      const [permissions] = await db.query<RowDataPacket[]>(
+        `SELECT p.can_edit_project
+         FROM \`groups\` target_g
+         JOIN projects pr ON target_g.project_id = pr.id
+         JOIN \`groups\` g ON g.project_id = pr.id
+         JOIN group_members gm ON gm.group_id = g.id
+         JOIN permissions p ON p.group_id = g.id
+         WHERE target_g.id = ? AND gm.user_id = ? AND p.can_edit_project = true`,
+        [id, userId]
       );
+
+      if (permissions.length === 0) {
+        return NextResponse.json(
+          { error: "Permission denied" },
+          { status: 403 }
+        );
+      }
     }
 
     await db.query("DELETE FROM \`groups\` WHERE id = ?", [id]);

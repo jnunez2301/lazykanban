@@ -11,14 +11,14 @@ async function handleGET(req: AuthRequest) {
 
     // Get projects where user is owner or member of a group
     const [projects] = await db.query<RowDataPacket[]>(
-      `SELECT DISTINCT p.id, p.name, p.description, p.owner_id, p.created_at, p.updated_at,
+      `SELECT DISTINCT p.id, p.name, p.description, p.owner_id, p.is_pinned, p.pinned_at, p.created_at, p.updated_at,
        u.name as owner_name
        FROM projects p
        LEFT JOIN users u ON p.owner_id = u.id
        LEFT JOIN \`groups\` g ON g.project_id = p.id
        LEFT JOIN group_members gm ON gm.group_id = g.id
        WHERE p.owner_id = ? OR gm.user_id = ?
-       ORDER BY p.created_at DESC`,
+       ORDER BY p.is_pinned DESC, p.name ASC`,
       [userId, userId]
     );
 
@@ -33,8 +33,12 @@ async function handleGET(req: AuthRequest) {
 }
 
 const createProjectSchema = z.object({
-  name: z.string().min(2, "Project name must be at least 2 characters"),
-  description: z.string().optional(),
+  name: z.string()
+    .min(3, "Project name must be at least 3 characters")
+    .max(120, "Project name must be less than 120 characters"),
+  description: z.string()
+    .max(255, "Project description must be less than 255 characters")
+    .optional(),
 });
 
 // Create a new project

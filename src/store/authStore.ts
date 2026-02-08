@@ -5,7 +5,8 @@ interface User {
   id: number;
   email: string;
   name: string;
-  uiMode: "dev" | "regular";
+  uiMode: "advanced" | "normal";
+  avatar?: string;
 }
 
 interface AuthState {

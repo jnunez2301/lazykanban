@@ -37,8 +37,8 @@ const addMember = async (groupId: number, email: string, role: string, token: st
   return response.json();
 };
 
-const removeMember = async (groupId: number, userId: number, token: string): Promise<void> => {
-  const response = await fetch(`/api/groups/${groupId}/members?userId=${userId}`, {
+const removeMember = async (groupId: number, memberId: number, token: string): Promise<void> => {
+  const response = await fetch(`/api/groups/${groupId}/members?memberId=${memberId}`, {
     method: "DELETE",
     headers: { Authorization: `Bearer ${token}` },
   });
@@ -66,7 +66,7 @@ export const useGroupMembers = (groupId: number | null) => {
   });
 
   const removeMutation = useMutation({
-    mutationFn: (userId: number) => removeMember(groupId!, userId, token!),
+    mutationFn: (memberId: number) => removeMember(groupId!, memberId, token!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["members", groupId] });
     },

@@ -9,6 +9,8 @@ import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import Link from "next/link";
+import { AvatarSelector } from "@/components/settings/AvatarSelector";
+import { ChangePasswordForm } from "@/components/settings/ChangePasswordForm";
 
 export default function SettingsPage() {
   const { currentMode, setMode } = useUIStore();
@@ -45,7 +47,7 @@ export default function SettingsPage() {
         <CardContent className="space-y-4">
           <div className="flex items-center gap-4">
             <Avatar className="h-16 w-16">
-              <AvatarImage src="" alt={user?.name} />
+              <AvatarImage src={user?.avatar ? `/avatars/${user.avatar}` : ""} alt={user?.name} />
               <AvatarFallback className="text-lg">{userInitials}</AvatarFallback>
             </Avatar>
             <div>
@@ -66,22 +68,22 @@ export default function SettingsPage() {
             <Label>UI Mode</Label>
             <RadioGroup
               defaultValue={currentMode}
-              onValueChange={(value) => setMode(value as "dev" | "regular")}
+              onValueChange={(value) => setMode(value as "advanced" | "normal")}
               className="flex flex-col space-y-1"
             >
               <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50">
-                <RadioGroupItem value="regular" id="regular" />
-                <Label htmlFor="regular" className="flex-1 cursor-pointer">
-                  <span className="font-medium block">Regular Mode</span>
+                <RadioGroupItem value="normal" id="normal" />
+                <Label htmlFor="normal" className="flex-1 cursor-pointer">
+                  <span className="font-medium block">Normal Mode</span>
                   <span className="text-xs text-muted-foreground font-normal">
                     Simplified interface focused on your assigned tasks.
                   </span>
                 </Label>
               </div>
               <div className="flex items-center space-x-2 p-2 rounded-md hover:bg-muted/50">
-                <RadioGroupItem value="dev" id="dev" />
-                <Label htmlFor="dev" className="flex-1 cursor-pointer">
-                  <span className="font-medium block">Dev Mode</span>
+                <RadioGroupItem value="advanced" id="advanced" />
+                <Label htmlFor="advanced" className="flex-1 cursor-pointer">
+                  <span className="font-medium block">Advanced Mode</span>
                   <span className="text-xs text-muted-foreground font-normal">
                     Full-featured interface for project management and detailed task tracking.
                   </span>
@@ -91,6 +93,10 @@ export default function SettingsPage() {
           </div>
         </CardContent>
       </Card>
+
+      <AvatarSelector />
+
+      <ChangePasswordForm />
     </div>
   );
 }

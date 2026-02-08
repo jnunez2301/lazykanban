@@ -1,5 +1,6 @@
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuthStore } from "@/store/authStore";
+import { toast } from "sonner";
 
 export interface Project {
   id: number;
@@ -7,6 +8,8 @@ export interface Project {
   description: string | null;
   owner_id: number;
   owner_name?: string;
+  is_pinned: boolean;
+  pinned_at: string | null;
   created_at: string;
   updated_at: string;
 }
@@ -51,6 +54,22 @@ const deleteProject = async (id: number, token: string): Promise<void> => {
   }
 };
 
+const updateProject = async (id: number, data: Partial<ProjectFormData> & { isPinned?: boolean }, token: string): Promise<Project> => {
+  const response = await fetch(`/api/projects/${id}`, {
+    method: "PATCH",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify(data),
+  });
+  if (!response.ok) {
+    const error = await response.json();
+    throw new Error(error.error || "Failed to update project");
+  }
+  return response.json();
+};
+
 export const useProjects = () => {
   const token = useAuthStore((state) => state.token);
   const queryClient = useQueryClient();
@@ -65,6 +84,10 @@ export const useProjects = () => {
     mutationFn: (data: ProjectFormData) => createProject(data, token!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project created successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to create project");
     },
   });
 
@@ -72,14 +95,32 @@ export const useProjects = () => {
     mutationFn: (id: number) => deleteProject(id, token!),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project deleted successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete project");
+    },
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, data }: { id: number; data: Partial<ProjectFormData> & { isPinned?: boolean } }) =>
+      updateProject(id, data, token!),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["projects"] });
+      toast.success("Project updated successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to update project");
     },
   });
 
   return {
     ...query,
     createProject: createMutation.mutateAsync,
+    updateProject: updateMutation.mutateAsync,
     deleteProject: deleteMutation.mutateAsync,
     isCreating: createMutation.isPending,
+    isUpdating: updateMutation.isPending,
     isDeleting: deleteMutation.isPending,
   };
 };

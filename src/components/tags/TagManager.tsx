@@ -29,6 +29,7 @@ import { TagBadge } from "./TagBadge";
 import { Plus, Trash2, X } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface TagManagerProps {
   projectId: string;
@@ -54,18 +55,36 @@ export const TagManager = ({ projectId }: TagManagerProps) => {
     mutationFn: deleteTag,
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["tags", projectId] });
+      toast.success("Tag deleted successfully");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message || "Failed to delete tag");
     },
   });
 
   const handleCreate = async () => {
     if (!newTagName.trim()) return;
+
+    // Validate tag name
+    const tagNameRegex = /^[a-zA-Z0-9\s\-_.,!()]+$/;
+    if (!tagNameRegex.test(newTagName)) {
+      toast.error("Tag name can only contain letters, numbers, spaces, and basic punctuation (- _ . , ! ())");
+      return;
+    }
+
+    if (newTagName.length > 50) {
+      toast.error("Tag name must be less than 50 characters");
+      return;
+    }
+
     try {
       await createTag({ name: newTagName, color: newTagColor });
       setNewTagName("");
       setNewTagColor("#6B7280");
       setCreateOpen(false);
+      toast.success("Tag created successfully");
     } catch (error) {
-      console.error("Failed to create tag", error);
+      toast.error(error instanceof Error ? error.message : "Failed to create tag");
     }
   };
 
@@ -138,54 +157,49 @@ export const TagManager = ({ projectId }: TagManagerProps) => {
         </Dialog>
       </div>
 
-      <div className="border rounded-md divide-y">
-        <div className="p-4 bg-muted/50 grid grid-cols-12 gap-4 text-sm font-medium text-muted-foreground">
-          <div className="col-span-4">Name & Color</div>
-          <div className="col-span-6">Usage</div>
-          <div className="col-span-2 text-right">Actions</div>
-        </div>
-        {tags?.map((tag) => (
-          <div key={tag.id} className="p-4 grid grid-cols-12 gap-4 items-center">
-            <div className="col-span-4">
-              <TagBadge name={tag.name} color={tag.color} />
-            </div>
-            <div className="col-span-6 text-sm text-muted-foreground">
-              {tag.is_default ? "Default Tag" : "Custom Tag"}
-            </div>
-            <div className="col-span-2 flex justify-end">
-              {!tag.is_default && (
-                <AlertDialog>
-                  <AlertDialogTrigger asChild>
-                    <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </AlertDialogTrigger>
-                  <AlertDialogContent>
-                    <AlertDialogHeader>
-                      <AlertDialogTitle>Delete Tag</AlertDialogTitle>
-                      <AlertDialogDescription>
-                        Are you sure you want to delete the tag "{tag.name}"? This will allow you to optionally delete associated tasks or remove the tag.
-                        (Note: Current implementation sets tag to null on tasks).
-                      </AlertDialogDescription>
-                    </AlertDialogHeader>
-                    <AlertDialogFooter>
-                      <AlertDialogCancel>Cancel</AlertDialogCancel>
-                      <AlertDialogAction
-                        onClick={() => deleteMutation.mutate(tag.id)}
-                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                        disabled={deleteMutation.isPending}
-                      >
-                        Delete
-                      </AlertDialogAction>
-                    </AlertDialogFooter>
-                  </AlertDialogContent>
-                </AlertDialog>
-              )}
-            </div>
+      <div className="space-y-4">
+        {tags && tags.length > 0 ? (
+          <div className="flex flex-wrap gap-3">
+            {tags.map((tag) => (
+              <div key={tag.id} className="flex items-center gap-2 bg-muted/50 rounded-lg p-3 pr-2">
+                <TagBadge name={tag.name} color={tag.color} />
+                <span className="text-xs text-muted-foreground">
+                  {tag.is_default ? "Default" : "Custom"}
+                </span>
+                {!tag.is_default && (
+                  <AlertDialog>
+                    <AlertDialogTrigger asChild>
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-muted-foreground hover:text-destructive ml-1">
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    </AlertDialogTrigger>
+                    <AlertDialogContent>
+                      <AlertDialogHeader>
+                        <AlertDialogTitle>Delete Tag</AlertDialogTitle>
+                        <AlertDialogDescription>
+                          Are you sure you want to delete the tag "{tag.name}"? This will remove the tag from all associated tasks.
+                        </AlertDialogDescription>
+                      </AlertDialogHeader>
+                      <AlertDialogFooter>
+                        <AlertDialogCancel>Cancel</AlertDialogCancel>
+                        <AlertDialogAction
+                          onClick={() => deleteMutation.mutate(tag.id)}
+                          className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                          disabled={deleteMutation.isPending}
+                        >
+                          Delete
+                        </AlertDialogAction>
+                      </AlertDialogFooter>
+                    </AlertDialogContent>
+                  </AlertDialog>
+                )}
+              </div>
+            ))}
           </div>
-        ))}
-        {tags?.length === 0 && (
-          <div className="p-8 text-center text-muted-foreground">No tags found.</div>
+        ) : (
+          <div className="p-8 text-center text-muted-foreground border rounded-lg">
+            No tags found. Create your first tag to get started.
+          </div>
         )}
       </div>
     </div>

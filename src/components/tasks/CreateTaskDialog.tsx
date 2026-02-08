@@ -35,8 +35,13 @@ import {
 import { useMemo } from "react";
 
 const formSchema = z.object({
-  title: z.string().min(1, "Title is required"),
-  description: z.string().optional(),
+  title: z.string()
+    .min(1, "Title is required")
+    .max(200, "Title must be less than 200 characters")
+    .regex(/^[a-zA-Z0-9\s\-_.,!()]+$/, "Title can only contain letters, numbers, spaces, and basic punctuation (- _ . , ! ())"),
+  description: z.string()
+    .max(255, "Description must be less than 255 characters")
+    .optional(),
   priority: z.enum(["low", "medium", "high"]),
   tagId: z.string().optional(), // We handle as string in form, convert to number
   due_date: z.string().optional(),
@@ -124,15 +129,19 @@ export function CreateTaskDialog({ open, onOpenChange, projectId }: CreateTaskDi
               name="description"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Description</FormLabel>
+                  <FormLabel>Description (Optional)</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Task details..."
                       className="resize-none h-20"
+                      maxLength={255}
                       {...field}
                     />
                   </FormControl>
-                  <FormMessage />
+                  <div className="flex justify-between text-xs text-muted-foreground">
+                    <FormMessage />
+                    <span>{field.value?.length || 0}/255</span>
+                  </div>
                 </FormItem>
               )}
             />

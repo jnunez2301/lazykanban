@@ -97,14 +97,14 @@ export const Sidebar = () => {
                   {projects?.map((project) => (
                     <Button
                       key={project.id}
-                      variant={pathname.includes(`/projects/${project.id}`) ? "secondary" : "ghost"}
+                      variant={pathname.includes(`/dashboard/projects/${project.id}`) ? "secondary" : "ghost"}
                       className="w-full justify-start font-normal"
                       asChild
                     >
-                      <Link href={`/projects/${project.id}`}>
+                      <Link href={`/dashboard/projects/${project.id}`}>
                         <FolderKanban className="mr-2 h-4 w-4" />
                         <span className="truncate">{project.name}</span>
-                        {pathname.includes(`/projects/${project.id}`) && (
+                        {pathname.includes(`/dashboard/projects/${project.id}`) && (
                           <ChevronRight className="ml-auto h-4 w-4 opacity-50" />
                         )}
                       </Link>

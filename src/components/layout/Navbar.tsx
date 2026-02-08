@@ -15,6 +15,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Menu, X, CheckSquare, LayoutDashboard, LogOut, Settings, User } from "lucide-react";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
 
 export const Navbar = () => {
   const router = useRouter();
@@ -38,7 +39,7 @@ export const Navbar = () => {
   return (
     <nav className="border-b bg-background h-16 flex items-center px-4 sticky top-0 z-50">
       <div className="flex items-center gap-4 flex-1">
-        {user && currentMode === "dev" && (
+        {user && currentMode === "advanced" && (
           <Button variant="ghost" size="icon" onClick={toggleSidebar} className="md:hidden">
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
@@ -52,32 +53,33 @@ export const Navbar = () => {
         {user && (
           <div className="hidden md:flex items-center gap-2 ml-4 bg-secondary/50 p-1 rounded-lg">
             <Button
-              variant={currentMode === "regular" ? "default" : "ghost"}
+              variant={currentMode === "normal" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setMode("regular")}
+              onClick={() => setMode("normal")}
               className="text-xs"
             >
-              Regular
+              Normal
             </Button>
             <Button
-              variant={currentMode === "dev" ? "default" : "ghost"}
+              variant={currentMode === "advanced" ? "default" : "ghost"}
               size="sm"
-              onClick={() => setMode("dev")}
+              onClick={() => setMode("advanced")}
               className="text-xs"
             >
-              Dev Mode
+              Advanced
             </Button>
           </div>
         )}
       </div>
 
       {user ? (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-2">
+          <ThemeToggle />
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src="" alt={user.name} />
+                  <AvatarImage src={user.avatar ? `/avatars/${user.avatar}` : ""} alt={user.name} />
                   <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
               </Button>
@@ -92,17 +94,21 @@ export const Navbar = () => {
                 </div>
               </DropdownMenuLabel>
               <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setMode(currentMode === "dev" ? "regular" : "dev")}>
+              <DropdownMenuItem onClick={() => setMode(currentMode === "advanced" ? "normal" : "advanced")}>
                 <LayoutDashboard className="mr-2 h-4 w-4" />
-                <span>Switch to {currentMode === "dev" ? "Regular" : "Dev"} Mode</span>
+                <span>Switch to {currentMode === "advanced" ? "Normal" : "Advanced"} Mode</span>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <User className="mr-2 h-4 w-4" />
-                <span>Profile</span>
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <User className="mr-2 h-4 w-4" />
+                  <span>Profile</span>
+                </Link>
               </DropdownMenuItem>
-              <DropdownMenuItem>
-                <Settings className="mr-2 h-4 w-4" />
-                <span>Settings</span>
+              <DropdownMenuItem asChild>
+                <Link href="/settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
               </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">

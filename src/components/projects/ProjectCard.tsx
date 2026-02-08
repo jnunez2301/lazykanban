@@ -6,7 +6,7 @@ import { Project, useProjects } from "@/hooks/useProjects";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { CalendarDays, User, ArrowRight, Trash2 } from "lucide-react";
+import { CalendarDays, User, ArrowRight, Trash2, Pin, PinOff } from "lucide-react";
 import { useAuthStore } from "@/store/authStore";
 import {
   AlertDialog,
@@ -25,12 +25,13 @@ interface ProjectCardProps {
 }
 
 export const ProjectCard = ({ project }: ProjectCardProps) => {
-  const { deleteProject, isDeleting } = useProjects();
+  const { deleteProject, updateProject, isDeleting, isUpdating } = useProjects();
   const { user } = useAuthStore();
   const isOwner = user?.id === project.owner_id;
 
   const handleDelete = async (e: React.MouseEvent) => {
-    e.preventDefault(); // Prevent navigation
+    e.preventDefault();
+    e.stopPropagation(); // Prevent navigation
     try {
       await deleteProject(project.id);
     } catch (error) {
@@ -38,23 +39,44 @@ export const ProjectCard = ({ project }: ProjectCardProps) => {
     }
   };
 
+  const handleTogglePin = async (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation(); // Prevent navigation
+    try {
+      await updateProject({ id: project.id, data: { isPinned: !project.is_pinned } });
+    } catch (error) {
+      console.error("Failed to toggle pin:", error);
+    }
+  };
+
   return (
-    <Link href={`/projects/${project.id}`}>
+    <Link href={`/dashboard/projects/${project.id}`}>
       <Card className="h-full hover:shadow-md transition-shadow cursor-pointer group flex flex-col">
         <CardHeader>
           <div className="flex justify-between items-start">
-            <CardTitle className="line-clamp-1 group-hover:text-primary transition-colors">
+            <CardTitle className="line-clamp-1 group-hover:text-primary transition-colors flex items-center gap-2">
+              {project.is_pinned && <Pin className="h-4 w-4 text-primary" />}
               {project.name}
             </CardTitle>
-            {isOwner && (
-              <div onClick={(e) => e.stopPropagation()}>
+            <div className="flex gap-1" onClick={(e) => e.stopPropagation()}>
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8 text-muted-foreground hover:text-primary"
+                onClick={handleTogglePin}
+                disabled={isUpdating}
+                title={project.is_pinned ? "Unpin project" : "Pin project"}
+              >
+                {project.is_pinned ? <PinOff className="h-4 w-4" /> : <Pin className="h-4 w-4" />}
+              </Button>
+              {isOwner && (
                 <AlertDialog>
                   <AlertDialogTrigger asChild>
                     <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground hover:text-destructive">
                       <Trash2 className="h-4 w-4" />
                     </Button>
                   </AlertDialogTrigger>
-                  <AlertDialogContent>
+                  <AlertDialogContent onClick={(e) => e.stopPropagation()}>
                     <AlertDialogHeader>
                       <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                       <AlertDialogDescription>
@@ -70,11 +92,11 @@ export const ProjectCard = ({ project }: ProjectCardProps) => {
                     </AlertDialogFooter>
                   </AlertDialogContent>
                 </AlertDialog>
-              </div>
-            )}
+              )}
+            </div>
           </div>
           <CardDescription className="line-clamp-2 min-h-[2.5rem]">
-            {project.description || "No description provided."}
+            {project.description || "No description available"}
           </CardDescription>
         </CardHeader>
         <CardContent className="flex-1">

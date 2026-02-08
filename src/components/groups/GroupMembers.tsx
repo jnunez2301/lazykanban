@@ -14,6 +14,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useAuthStore } from "@/store/authStore";
+import { toast } from "sonner";
 
 interface GroupMembersProps {
   groupId: number;
@@ -32,16 +33,18 @@ export const GroupMembers = ({ groupId, readOnly = false }: GroupMembersProps) =
     try {
       await addMember({ email: newMemberEmail, role: newMemberRole });
       setNewMemberEmail("");
+      toast.success("Member added successfully");
     } catch (error) {
-      console.error("Failed to add member", error);
+      toast.error(error instanceof Error ? error.message : "Failed to add member");
     }
   };
 
   const handleRemoveMember = async (memberId: number) => {
     try {
       await removeMember(memberId);
+      toast.success("Member removed successfully");
     } catch (error) {
-      console.error("Failed to remove member", error);
+      toast.error(error instanceof Error ? error.message : "Failed to remove member");
     }
   };
 
@@ -106,7 +109,7 @@ export const GroupMembers = ({ groupId, readOnly = false }: GroupMembersProps) =
                     variant="ghost"
                     size="icon"
                     className="h-8 w-8 text-muted-foreground hover:text-destructive"
-                    onClick={() => handleRemoveMember(member.user_id)}
+                    onClick={() => handleRemoveMember(member.id)}
                     disabled={isRemoving}
                   >
                     <Trash2 className="h-4 w-4" />

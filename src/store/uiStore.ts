@@ -1,7 +1,7 @@
 import { create } from "zustand";
-import { persist } from "zustand/middleware";
+import { persist, createJSONStorage } from "zustand/middleware";
 
-type UIMode = "dev" | "regular";
+type UIMode = "advanced" | "normal";
 
 interface UIState {
   currentMode: UIMode;
@@ -14,7 +14,7 @@ interface UIState {
 export const useUIStore = create<UIState>()(
   persist(
     (set) => ({
-      currentMode: "regular",
+      currentMode: "normal",
       sidebarOpen: false,
       setMode: (mode) => set({ currentMode: mode }),
       toggleSidebar: () => set((state) => ({ sidebarOpen: !state.sidebarOpen })),
@@ -22,6 +22,7 @@ export const useUIStore = create<UIState>()(
     }),
     {
       name: "ui-storage",
+      storage: createJSONStorage(() => localStorage),
     }
   )
 );

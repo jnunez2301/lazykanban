@@ -8,21 +8,24 @@ interface Params {
   params: Promise<{ id: string }>;
 }
 
-// Get group permissions
+// Get permissions for a specific group
 async function handleGET(req: AuthRequest, { params }: Params) {
   try {
-    const { id } = await params;
+    const { id: groupId } = await params;
     const userId = req.user!.userId;
 
-    // Check access - must be able to view project
+    // Check if user has access to the project this group belongs to
+    // We allow any member of the project to view permissions of groups? 
+    // Or only owners/admins? Let's restrict to owners or those with manage_members permission.
     const [access] = await db.query<RowDataPacket[]>(
-      `SELECT 1
-       FROM \`groups\` target_g
-       JOIN projects pr ON target_g.project_id = pr.id
-       JOIN \`groups\` g ON g.project_id = pr.id
-       JOIN group_members gm ON gm.group_id = g.id
-       WHERE target_g.id = ? AND (pr.owner_id = ? OR gm.user_id = ?)`,
-      [id, userId, userId]
+      `SELECT pr.id
+       FROM \`groups\` g
+       JOIN projects pr ON g.project_id = pr.id
+       LEFT JOIN \`groups\` user_g ON user_g.project_id = pr.id
+       LEFT JOIN group_members gm ON gm.group_id = user_g.id
+       LEFT JOIN permissions p ON p.group_id = user_g.id
+       WHERE g.id = ? AND gm.user_id = ? AND (pr.owner_id = ? OR p.can_manage_members = true)`,
+      [groupId, userId, userId]
     );
 
     if (access.length === 0) {
@@ -33,20 +36,35 @@ async function handleGET(req: AuthRequest, { params }: Params) {
     }
 
     const [permissions] = await db.query<RowDataPacket[]>(
-      "SELECT * FROM permissions WHERE group_id = ?",
-      [id]
+      `SELECT 
+        can_create_tasks as canCreateTasks,
+        can_edit_tasks as canEditTasks,
+        can_delete_tasks as canDeleteTasks,
+        can_manage_members as canManageMembers,
+        can_manage_tags as canManageTags,
+        can_edit_project as canEditProject
+       FROM permissions 
+       WHERE group_id = ?`,
+      [groupId]
     );
 
     if (permissions.length === 0) {
+      // Should not happen if group exists, but just in case
       return NextResponse.json(
-        { error: "Permissions not found" },
-        { status: 404 }
+        {
+          canCreateTasks: false,
+          canEditTasks: false,
+          canDeleteTasks: false,
+          canManageMembers: false,
+          canManageTags: false,
+          canEditProject: false
+        }
       );
     }
 
     return NextResponse.json(permissions[0]);
   } catch (error) {
-    console.error("Get permissions error:", error);
+    console.error("Get group permissions error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
@@ -55,35 +73,38 @@ async function handleGET(req: AuthRequest, { params }: Params) {
 }
 
 const updatePermissionsSchema = z.object({
-  can_create_tasks: z.boolean().optional(),
-  can_edit_tasks: z.boolean().optional(),
-  can_delete_tasks: z.boolean().optional(),
-  can_manage_tags: z.boolean().optional(),
-  can_manage_members: z.boolean().optional(),
-  can_edit_project: z.boolean().optional(),
+  canCreateTasks: z.boolean().optional(),
+  canEditTasks: z.boolean().optional(),
+  canDeleteTasks: z.boolean().optional(),
+  canManageMembers: z.boolean().optional(),
+  canManageTags: z.boolean().optional(),
+  canEditProject: z.boolean().optional(),
 });
 
-// Update group permissions
+// Update permissions for a group
 async function handlePATCH(req: AuthRequest, { params }: Params) {
   try {
-    const { id } = await params;
+    const { id: groupId } = await params;
     const userId = req.user!.userId;
     const body = await req.json();
     const validatedData = updatePermissionsSchema.parse(body);
 
-    // Check permission - must be project owner or have can_edit_project (which usually implies admin rights)
-    const [permissions] = await db.query<RowDataPacket[]>(
-      `SELECT p.can_edit_project
-       FROM \`groups\` target_g
-       JOIN projects pr ON target_g.project_id = pr.id
-       JOIN \`groups\` g ON g.project_id = pr.id
-       JOIN group_members gm ON gm.group_id = g.id
-       JOIN permissions p ON p.group_id = g.id
-       WHERE target_g.id = ? AND gm.user_id = ? AND (pr.owner_id = ? OR p.can_edit_project = true)`,
-      [id, userId, userId]
+    // Check if user is project owner. Only owner can manage permissions for now to be safe, 
+    // or maybe admins (can_manage_members).
+    // Let's restrict to project OWNER for strict security on permission changes, 
+    // or allow 'can_edit_project' which we used for group creation.
+    const [access] = await db.query<RowDataPacket[]>(
+      `SELECT pr.id
+       FROM \`groups\` g
+       JOIN projects pr ON g.project_id = pr.id
+       LEFT JOIN \`groups\` user_g ON user_g.project_id = pr.id
+       LEFT JOIN group_members gm ON gm.group_id = user_g.id
+       LEFT JOIN permissions p ON p.group_id = user_g.id
+       WHERE g.id = ? AND gm.user_id = ? AND (pr.owner_id = ? OR p.can_edit_project = true)`,
+      [groupId, userId, userId]
     );
 
-    if (permissions.length === 0) {
+    if (access.length === 0) {
       return NextResponse.json(
         { error: "Permission denied" },
         { status: 403 }
@@ -93,32 +114,46 @@ async function handlePATCH(req: AuthRequest, { params }: Params) {
     const updates: string[] = [];
     const values: any[] = [];
 
-    // Loop through keys to build update query
-    Object.entries(validatedData).forEach(([key, value]) => {
-      updates.push(`${key} = ?`);
-      values.push(value);
-    });
+    if (validatedData.canCreateTasks !== undefined) {
+      updates.push("can_create_tasks = ?");
+      values.push(validatedData.canCreateTasks);
+    }
+    if (validatedData.canEditTasks !== undefined) {
+      updates.push("can_edit_tasks = ?");
+      values.push(validatedData.canEditTasks);
+    }
+    if (validatedData.canDeleteTasks !== undefined) {
+      updates.push("can_delete_tasks = ?");
+      values.push(validatedData.canDeleteTasks);
+    }
+    if (validatedData.canManageMembers !== undefined) {
+      updates.push("can_manage_members = ?");
+      values.push(validatedData.canManageMembers);
+    }
+    if (validatedData.canManageTags !== undefined) {
+      updates.push("can_manage_tags = ?");
+      values.push(validatedData.canManageTags);
+    }
+    if (validatedData.canEditProject !== undefined) {
+      updates.push("can_edit_project = ?");
+      values.push(validatedData.canEditProject);
+    }
 
     if (updates.length === 0) {
       return NextResponse.json(
-        { error: "No valid fields to update" },
+        { error: "No details to update" },
         { status: 400 }
       );
     }
 
-    values.push(id);
+    values.push(groupId);
 
     await db.query(
       `UPDATE permissions SET ${updates.join(", ")} WHERE group_id = ?`,
       values
     );
 
-    const [updatedPermissions] = await db.query<RowDataPacket[]>(
-      "SELECT * FROM permissions WHERE group_id = ?",
-      [id]
-    );
-
-    return NextResponse.json(updatedPermissions[0]);
+    return NextResponse.json({ message: "Permissions updated successfully" });
   } catch (error) {
     if (error instanceof z.ZodError) {
       return NextResponse.json(
@@ -126,8 +161,7 @@ async function handlePATCH(req: AuthRequest, { params }: Params) {
         { status: 400 }
       );
     }
-
-    console.error("Update permissions error:", error);
+    console.error("Update group permissions error:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }
