@@ -45,17 +45,17 @@ export default function ProjectPage() {
         <div className="flex items-center gap-3">
           <div>
             <h1 className="text-2xl font-bold tracking-tight">{project.name}</h1>
-            {project.description && (
+            {!project.description ? <p className="text-muted-foreground text-sm">No description available</p> : (
               <p className="text-muted-foreground text-sm">{project.description}</p>
             )}
+            {!groupLoading && userGroup && Array.isArray(userGroup) && userGroup.map((group) => (
+              <Badge key={group.group_id} variant="secondary" className="flex items-center gap-1.5 mt-2">
+                <Users className="h-3.5 w-3.5" />
+                {group.group_name}
+                <span className="text-xs opacity-70">({group.role})</span>
+              </Badge>
+            ))}
           </div>
-          {!groupLoading && userGroup && Array.isArray(userGroup) && userGroup.map((group) => (
-            <Badge key={group.group_id} variant="secondary" className="flex items-center gap-1.5">
-              <Users className="h-3.5 w-3.5" />
-              {group.group_name}
-              <span className="text-xs opacity-70">({group.role})</span>
-            </Badge>
-          ))}
         </div>
         {/* @ts-ignore: permission is returned as a number in the backend */}
         {permissions?.canManageMembers === 1 && <Link className="flex items-center gap-1.5" href={`/dashboard/projects/${id}/manage`}>
