@@ -127,7 +127,7 @@ export const Sidebar = () => {
             <div className="space-y-1">
               <h4 className="text-sm font-semibold tracking-tight px-2 py-2">Settings</h4>
               <Button variant="ghost" className="w-full justify-start" asChild>
-                <Link href="/settings">
+                <Link href="/dashboard/settings">
                   <Settings className="mr-2 h-4 w-4" />
                   Preferences
                 </Link>

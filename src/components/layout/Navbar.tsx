@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { useRouter } from "next/navigation";
-import { useAuthStore } from "@/store/authStore";
-import { useUIStore } from "@/store/uiStore";
+import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -13,9 +11,11 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Menu, X, CheckSquare, LayoutDashboard, LogOut, Settings, User } from "lucide-react";
-import { ThemeToggle } from "@/components/theme/ThemeToggle";
+import { useAuthStore } from "@/store/authStore";
+import { useUIStore } from "@/store/uiStore";
+import { CheckSquare, LogOut, Menu, X } from "lucide-react";
+import Link from "next/link";
+import { useRouter } from "next/navigation";
 
 export const Navbar = () => {
   const router = useRouter();
@@ -93,23 +93,6 @@ export const Navbar = () => {
                   </p>
                 </div>
               </DropdownMenuLabel>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem onClick={() => setMode(currentMode === "advanced" ? "normal" : "advanced")}>
-                <LayoutDashboard className="mr-2 h-4 w-4" />
-                <span>Switch to {currentMode === "advanced" ? "Normal" : "Advanced"} Mode</span>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings">
-                  <User className="mr-2 h-4 w-4" />
-                  <span>Profile</span>
-                </Link>
-              </DropdownMenuItem>
-              <DropdownMenuItem asChild>
-                <Link href="/settings">
-                  <Settings className="mr-2 h-4 w-4" />
-                  <span>Settings</span>
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem onClick={handleLogout} className="text-destructive focus:text-destructive">
                 <LogOut className="mr-2 h-4 w-4" />
