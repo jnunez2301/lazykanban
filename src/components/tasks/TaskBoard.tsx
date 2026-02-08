@@ -1,11 +1,11 @@
 "use client";
 
-import { useMemo, useState } from "react";
-import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, closestCorners, PointerSensor, useSensor, useSensors, useDroppable } from "@dnd-kit/core";
-import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
+import { useMemo, useState, useEffect } from "react";
+import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, closestCorners, PointerSensor, useSensor, useSensors, useDroppable } from "@dnd-kit/core";
+import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { useTasks, Task } from "@/hooks/useTasks";
 import { useTags, Tag } from "@/hooks/useTags";
-import { TaskCard } from "@/components/tasks/TaskCard";
+import { TaskCard, SortableTaskCard } from "@/components/tasks/TaskCard";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
@@ -45,7 +45,7 @@ const BoardColumn = ({ tag, tasks, onTaskClick }: { tag: Tag; tasks: Task[]; onT
           strategy={verticalListSortingStrategy}
         >
           {tasks.map(task => (
-            <TaskCard
+            <SortableTaskCard
               key={task.id}
               task={task}
               onClick={() => onTaskClick(task)}
@@ -63,11 +63,22 @@ const BoardColumn = ({ tag, tasks, onTaskClick }: { tag: Tag; tasks: Task[]; onT
   );
 };
 
+
 export const TaskBoard = ({ projectId }: TaskBoardProps) => {
   const { data: tasks, isLoading: tasksLoading, updateTask } = useTasks(projectId);
   const { data: tags, isLoading: tagsLoading } = useTags(projectId);
   const [createOpen, setCreateOpen] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(null);
+
+  // Local state for optimistic updates
+  const [localTasks, setLocalTasks] = useState<Task[]>([]);
+
+  // Sync local state with server data
+  useEffect(() => {
+    if (tasks) {
+      setLocalTasks(tasks);
+    }
+  }, [tasks]);
 
   // New state for selected task
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -89,8 +100,9 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
       });
     }
 
-    if (tasks) {
-      tasks.forEach(task => {
+    // Use localTasks instead of tasks
+    if (localTasks) {
+      localTasks.forEach(task => {
         const tagId = task.tag_id || 0;
         if (!grouped[tagId]) {
           grouped[tagId] = [];
@@ -99,14 +111,52 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
       });
     }
     return grouped;
-  }, [tasks, tags]);
+  }, [localTasks, tags]);
 
   const activeTask = useMemo(() =>
-    tasks?.find(t => t.id === activeId),
-    [tasks, activeId]);
+    localTasks?.find(t => t.id === activeId),
+    [localTasks, activeId]);
 
   const handleDragStart = (event: DragStartEvent) => {
     setActiveId(event.active.id as number);
+  };
+
+  const handleDragOver = (event: DragOverEvent) => {
+    const { active, over } = event;
+    if (!over) return;
+
+    const activeId = active.id;
+    const overId = over.id;
+
+    if (activeId === overId) return;
+
+    const activeTaskIndex = localTasks.findIndex(t => t.id === activeId);
+    if (activeTaskIndex === -1) return;
+
+    const activeTask = localTasks[activeTaskIndex];
+    let overContainerId: number | null = null;
+
+    // Identify over container
+    if (overId.toString().startsWith("col-")) {
+      overContainerId = parseInt(overId.toString().replace("col-", ""));
+    } else {
+      const overTask = localTasks.find(t => t.id === overId);
+      if (overTask) {
+        overContainerId = overTask.tag_id || null;
+      }
+    }
+
+    if (overContainerId === null) return;
+
+    // If moving to a different container
+    if (activeTask.tag_id !== overContainerId) {
+      setLocalTasks((items) => {
+        const newItems = [...items];
+        // Optimistically update the tag_id
+        newItems[activeTaskIndex] = { ...newItems[activeTaskIndex], tag_id: overContainerId! };
+        return newItems;
+      });
+    }
   };
 
   const handleDragEnd = async (event: DragEndEvent) => {
@@ -118,26 +168,43 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
     const taskId = parseInt(active.id.toString());
     const overId = over.id.toString();
 
+    // Calculate final tag ID based on drop
     let newTagId: number | null = null;
 
     if (overId.startsWith("col-")) {
       newTagId = parseInt(overId.replace("col-", ""));
     } else {
       const overTaskId = parseInt(overId);
-      const overTask = tasks?.find(t => t.id === overTaskId);
+      // Look up in localTasks for the most current state, 
+      // but 'overTask' might not have changed.
+      const overTask = localTasks.find(t => t.id === overTaskId);
       if (overTask) {
         newTagId = overTask.tag_id;
       }
     }
 
-    const activeTask = tasks?.find(t => t.id === taskId);
+    // Determine original state from server data (to see if api call is needed)
+    // Actually, we must check if the FINAL state requires update.
+    // Since we updated local state optimistically, let's verify if an update is needed.
 
-    if (activeTask && newTagId !== null && newTagId !== activeTask.tag_id) {
+    // We can just call updateTask. If newTagId is different from original server task's tag_id, do it.
+    const originalTask = tasks?.find(t => t.id === taskId);
+
+    if (originalTask && newTagId !== null && newTagId !== originalTask.tag_id) {
       try {
         await updateTask({ id: taskId, data: { tagId: newTagId } });
       } catch (err) {
         console.error("Failed to move task", err);
+        // Revert local state if error
+        if (tasks) setLocalTasks(tasks);
       }
+    } else {
+      // If no change or update failed (or redundant), sync back to ensure consistency
+      // But if we moved item across columns and dropped it, we want it to stay.
+      // If we don't call API, we keep localTasks as is until refresh?
+      // Actually, if we don't call API, it means no change.
+      // We should probably re-sync localTasks to server tasks to clear any optimistic partial state
+      // if it wasn't a valid move. But here the logic suggests if tag changed, we call API.
     }
   };
 
@@ -166,6 +233,7 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
         sensors={sensors}
         collisionDetection={closestCorners}
         onDragStart={handleDragStart}
+        onDragOver={handleDragOver}
         onDragEnd={handleDragEnd}
       >
         <div className="flex-1 overflow-x-auto overflow-y-hidden">
@@ -184,8 +252,11 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
 
         <DragOverlay>
           {activeId && activeTask ? (
-            <div className="w-[280px] opacity-80 rotate-2 cursor-grabbing">
-              <TaskCard task={activeTask} />
+            <div className="w-[280px]">
+              <TaskCard
+                task={activeTask}
+                className="rotate-2 cursor-grabbing shadow-2xl scale-105 opacity-100 bg-card border-primary/50 ring-2 ring-primary/20"
+              />
             </div>
           ) : null}
         </DragOverlay>

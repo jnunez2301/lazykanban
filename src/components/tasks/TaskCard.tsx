@@ -13,23 +13,13 @@ import { cn } from "@/lib/utils";
 interface TaskCardProps {
   task: Task;
   onClick?: () => void;
+  className?: string; // Add className prop
+  style?: React.CSSProperties; // Add style prop
+  isOverlay?: boolean;
 }
 
-export const TaskCard = ({ task, onClick }: TaskCardProps) => {
-  const {
-    attributes,
-    listeners,
-    setNodeRef,
-    transform,
-    transition,
-    isDragging,
-  } = useSortable({ id: task.id, data: { task } });
-
-  const style = {
-    transform: CSS.Transform.toString(transform),
-    transition,
-  };
-
+// Pure UI Component
+export const TaskCard = ({ task, onClick, className, style, isOverlay }: TaskCardProps) => {
   const priorityColor = {
     low: "bg-slate-500",
     medium: "bg-blue-500",
@@ -47,13 +37,10 @@ export const TaskCard = ({ task, onClick }: TaskCardProps) => {
 
   return (
     <Card
-      ref={setNodeRef}
       style={style}
-      {...attributes}
-      {...listeners}
       className={cn(
         "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow bg-card/50 backdrop-blur-sm",
-        isDragging && "opacity-50 border-primary"
+        className
       )}
       onClick={onClick}
     >
@@ -105,5 +92,38 @@ export const TaskCard = ({ task, onClick }: TaskCardProps) => {
         )}
       </CardFooter>
     </Card>
+  );
+};
+
+// Sortable Wrapper
+export const SortableTaskCard = ({ task, onClick }: { task: Task; onClick?: () => void }) => {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: task.id, data: { task } });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+  };
+
+  if (isDragging) {
+    return (
+      <div
+        ref={setNodeRef}
+        style={style}
+        className="opacity-50 bg-black/5 dark:bg-white/5 border-2 border-dashed border-primary/20 rounded-lg h-[120px]"
+      />
+    );
+  }
+
+  return (
+    <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none">
+      <TaskCard task={task} onClick={onClick} />
+    </div>
   );
 };
