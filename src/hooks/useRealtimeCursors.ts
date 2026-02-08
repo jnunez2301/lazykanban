@@ -11,7 +11,7 @@ export interface CursorData {
   socketId?: string;
 }
 
-export const useRealtimeCursors = (projectId: string) => {
+export const useRealtimeCursors = (projectId: string | null) => {
   const [cursors, setCursors] = useState<Map<string, CursorData>>(new Map());
   const socketRef = useRef<Socket | null>(null);
   const { user } = useAuthStore();

@@ -19,7 +19,7 @@ import { useState, useEffect } from "react";
 import { CreateProjectDialog } from "@/components/projects/CreateProjectDialog";
 
 export const Sidebar = () => {
-  const pathname = usePathname();
+  const pathname = usePathname() || "";
   const { sidebarOpen, setSidebarOpen } = useUIStore();
   const { data: projects } = useProjects();
   const [createDialogOpen, setCreateDialogOpen] = useState(false);

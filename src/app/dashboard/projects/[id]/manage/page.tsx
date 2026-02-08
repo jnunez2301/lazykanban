@@ -6,9 +6,10 @@ import { useEffect } from "react";
 import { FileWarning } from "lucide-react";
 
 const ManagePage = () => {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
   const router = useRouter();
-  const { data: permissions, isLoading } = useProjectPermissions(id);
+  const { data: permissions, isLoading } = useProjectPermissions(id ?? null);
 
   useEffect(() => {
     if (!isLoading && permissions && !permissions.canEditProject) {
@@ -20,6 +21,8 @@ const ManagePage = () => {
     return <div>Loading...</div>;
   }
 
+  if (!id) return null;
+
   if (!permissions?.canEditProject) {
     return (
       <div className="flex flex-col items-center justify-center h-[50vh] text-center space-y-4">
@@ -29,7 +32,6 @@ const ManagePage = () => {
       </div>
     );
   }
-
   return (
     <>
       <GroupManager projectId={id} />

@@ -134,12 +134,15 @@ const fetchProject = async (id: string, token: string): Promise<Project> => {
   return response.json();
 };
 
-export const useProject = (id: string) => {
+export const useProject = (id: string | null) => {
   const token = useAuthStore((state) => state.token);
 
   return useQuery({
     queryKey: ["projects", id],
-    queryFn: () => fetchProject(id, token!),
+    queryFn: () => {
+      if (!id) return Promise.reject("No project ID");
+      return fetchProject(id, token!);
+    },
     enabled: !!token && !!id,
   });
 };

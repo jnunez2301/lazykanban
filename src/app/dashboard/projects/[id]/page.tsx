@@ -17,12 +17,13 @@ import Link from "next/link";
 import { useEffect } from "react";
 
 export default function ProjectPage() {
-  const { id } = useParams<{ id: string }>();
+  const params = useParams<{ id: string }>();
+  const id = params?.id;
   const { currentMode } = useUIStore();
-  const { data: project, isLoading, error } = useProject(id);
-  const { data: userGroup, isLoading: groupLoading } = useUserGroup(id);
-  const { data: permissions } = useProjectPermissions(id);
-  const { cursors, updateCursor } = useRealtimeCursors(id);
+  const { data: project, isLoading, error } = useProject(id ?? null);
+  const { data: userGroup, isLoading: groupLoading } = useUserGroup(id ?? null);
+  const { data: permissions } = useProjectPermissions(id ?? null);
+  const { cursors, updateCursor } = useRealtimeCursors(id ?? null);
 
   useEffect(() => {
     const handleMouseMove = (e: MouseEvent) => {
