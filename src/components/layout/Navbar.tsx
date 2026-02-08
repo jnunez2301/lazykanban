@@ -35,7 +35,7 @@ export const Navbar = () => {
       .toUpperCase()
       .substring(0, 2)
     : "U";
-
+  console.log(user?.avatar);
   return (
     <nav className="border-b bg-background h-16 flex items-center px-4 sticky top-0 z-50">
       <div className="flex items-center gap-4 flex-1">
@@ -79,7 +79,7 @@ export const Navbar = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={user.avatar ? `/avatars/${user.avatar}` : ""} alt={user.name} />
+                  <AvatarImage src={`/avatars/${user.avatar ?? "avatar-1.png"}`} alt={user.name} />
                   <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
               </Button>
