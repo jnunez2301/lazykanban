@@ -4,6 +4,7 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTasks } from "@/hooks/useTasks";
+import { useRealtimeTasks } from "@/hooks/useRealtimeTasks";
 import { useTags } from "@/hooks/useTags";
 import { useGroupPermissions } from "@/hooks/usePermissions";
 import { Button } from "@/components/ui/button";
@@ -56,6 +57,7 @@ interface CreateTaskDialogProps {
 export function CreateTaskDialog({ open, onOpenChange, projectId }: CreateTaskDialogProps) {
   const { createTask, isCreating } = useTasks(projectId);
   const { data: tags, isLoading: tagsLoading } = useTags(projectId);
+  const { emitTaskCreated } = useRealtimeTasks(projectId);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -85,13 +87,14 @@ export function CreateTaskDialog({ open, onOpenChange, projectId }: CreateTaskDi
 
   async function onSubmit(values: z.infer<typeof formSchema>) {
     try {
-      await createTask({
+      const newTask = await createTask({
         title: values.title,
         description: values.description,
         priority: values.priority,
         tagId: values.tagId ? parseInt(values.tagId) : null,
         due_date: values.due_date || undefined,
       });
+      emitTaskCreated(newTask);
       form.reset();
       onOpenChange(false);
     } catch (error) {

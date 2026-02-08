@@ -6,6 +6,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useTasks, Task } from "@/hooks/useTasks";
 import { useTags } from "@/hooks/useTags";
+import { useRealtimeTasks } from "@/hooks/useRealtimeTasks";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -64,6 +65,7 @@ interface TaskDetailDialogProps {
 export function TaskDetailDialog({ task, open, onOpenChange, projectId }: TaskDetailDialogProps) {
   const { updateTask, deleteTask, isUpdating, isDeleting } = useTasks(projectId);
   const { data: tags } = useTags(projectId);
+  const { emitTaskUpdated, emitTaskDeleted } = useRealtimeTasks(projectId);
 
   const form = useForm<z.infer<typeof formSchema>>({
     resolver: zodResolver(formSchema),
@@ -91,7 +93,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, projectId }: TaskDe
     if (!task) return;
 
     try {
-      await updateTask({
+      const updatedTask = await updateTask({
         id: task.id,
         data: {
           title: values.title,
@@ -101,6 +103,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, projectId }: TaskDe
           due_date: values.dueDate || undefined,
         },
       });
+      emitTaskUpdated(updatedTask);
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to update task:", error);
@@ -111,6 +114,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, projectId }: TaskDe
     if (!task) return;
     try {
       await deleteTask(task.id);
+      emitTaskDeleted(task.id);
       onOpenChange(false);
     } catch (error) {
       console.error("Failed to delete task:", error);

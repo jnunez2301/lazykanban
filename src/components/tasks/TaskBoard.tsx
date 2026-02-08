@@ -5,6 +5,8 @@ import { DndContext, DragEndEvent, DragOverlay, DragStartEvent, DragOverEvent, c
 import { SortableContext, verticalListSortingStrategy, arrayMove } from "@dnd-kit/sortable";
 import { useTasks, Task } from "@/hooks/useTasks";
 import { useTags, Tag } from "@/hooks/useTags";
+import { useRealtimeTasks } from "@/hooks/useRealtimeTasks";
+import { useTaskLocking } from "@/hooks/useTaskLocking";
 import { TaskCard, SortableTaskCard } from "@/components/tasks/TaskCard";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
@@ -17,7 +19,23 @@ interface TaskBoardProps {
 }
 
 // Sub-component for Column to handle Droppable logic
-const BoardColumn = ({ tag, tasks, onTaskClick }: { tag: Tag; tasks: Task[]; onTaskClick: (task: Task) => void }) => {
+const BoardColumn = ({
+  tag,
+  tasks,
+  onTaskClick,
+  onTaskMouseDown,
+  onTaskMouseUp,
+  getTaskLock,
+  isTaskLocked
+}: {
+  tag: Tag;
+  tasks: Task[];
+  onTaskClick: (task: Task) => void;
+  onTaskMouseDown: (taskId: number) => void;
+  onTaskMouseUp: (taskId: number) => void;
+  getTaskLock: (taskId: number) => { userId: number; userName: string } | undefined;
+  isTaskLocked: (taskId: number) => boolean;
+}) => {
   const { setNodeRef } = useDroppable({
     id: `col-${tag.id}`,
   });
@@ -44,13 +62,20 @@ const BoardColumn = ({ tag, tasks, onTaskClick }: { tag: Tag; tasks: Task[]; onT
           items={tasks.map(t => t.id)}
           strategy={verticalListSortingStrategy}
         >
-          {tasks.map(task => (
-            <SortableTaskCard
-              key={task.id}
-              task={task}
-              onClick={() => onTaskClick(task)}
-            />
-          ))}
+          {tasks.map(task => {
+            const lock = getTaskLock(task.id);
+            return (
+              <SortableTaskCard
+                key={task.id}
+                task={task}
+                onClick={() => onTaskClick(task)}
+                onMouseDown={() => onTaskMouseDown(task.id)}
+                onMouseUp={() => onTaskMouseUp(task.id)}
+                isLocked={isTaskLocked(task.id)}
+                lockedBy={lock?.userName}
+              />
+            );
+          })}
         </SortableContext>
 
         {tasks.length === 0 && (
@@ -65,8 +90,11 @@ const BoardColumn = ({ tag, tasks, onTaskClick }: { tag: Tag; tasks: Task[]; onT
 
 
 export const TaskBoard = ({ projectId }: TaskBoardProps) => {
-  const { data: tasks, isLoading: tasksLoading, updateTask } = useTasks(projectId);
+  const { data: tasks, isLoading: tasksLoading, updateTask, createTask, deleteTask } = useTasks(projectId);
   const { data: tags, isLoading: tagsLoading } = useTags(projectId);
+  const { emitTaskCreated, emitTaskUpdated, emitTaskDeleted } = useRealtimeTasks(projectId);
+  const { lockTask, unlockTask, isTaskLocked, getTaskLock } = useTaskLocking(projectId);
+
   const [createOpen, setCreateOpen] = useState(false);
   const [activeId, setActiveId] = useState<number | null>(null);
 
@@ -75,10 +103,10 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
 
   // Sync local state with server data
   useEffect(() => {
-    if (tasks) {
+    if (tasks && !activeId) {
       setLocalTasks(tasks);
     }
-  }, [tasks]);
+  }, [tasks, activeId]);
 
   // New state for selected task
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
@@ -118,7 +146,16 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
     [localTasks, activeId]);
 
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveId(event.active.id as number);
+    const taskId = event.active.id as number;
+    setActiveId(taskId);
+    lockTask(taskId); // Ensure locked during drag
+  };
+
+  const handleDragCancel = () => {
+    if (activeId) {
+      unlockTask(activeId);
+    }
+    setActiveId(null);
   };
 
   const handleDragOver = (event: DragOverEvent) => {
@@ -161,11 +198,13 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
 
   const handleDragEnd = async (event: DragEndEvent) => {
     const { active, over } = event;
+    const taskId = parseInt(active.id.toString());
+
+    unlockTask(taskId); // Unlock task after drag
     setActiveId(null);
 
     if (!over) return;
 
-    const taskId = parseInt(active.id.toString());
     const overId = over.id.toString();
 
     // Calculate final tag ID based on drop
@@ -192,7 +231,8 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
 
     if (originalTask && newTagId !== null && newTagId !== originalTask.tag_id) {
       try {
-        await updateTask({ id: taskId, data: { tagId: newTagId } });
+        const updatedTask = await updateTask({ id: taskId, data: { tagId: newTagId } });
+        emitTaskUpdated(updatedTask);
       } catch (err) {
         console.error("Failed to move task", err);
         // Revert local state if error
@@ -211,6 +251,26 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
   const handleTaskClick = (task: Task) => {
     setSelectedTask(task);
     setDetailOpen(true);
+    lockTask(task.id); // Lock when opening dialog
+  };
+
+  const handleDetailDialogChange = (open: boolean) => {
+    if (!open && selectedTask) {
+      unlockTask(selectedTask.id); // Unlock when closing dialog
+    }
+    setDetailOpen(open);
+  };
+
+  const handleTaskMouseDown = (taskId: number) => {
+    // Keep for drag interactions
+    lockTask(taskId);
+  };
+
+  const handleTaskMouseUp = (taskId: number) => {
+    // Only unlock if dialog is not open
+    if (!detailOpen) {
+      unlockTask(taskId);
+    }
   };
 
   if (tasksLoading || tagsLoading) {
@@ -244,6 +304,10 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
                   tag={tag}
                   tasks={tasksByTag[tag.id] || []}
                   onTaskClick={handleTaskClick}
+                  onTaskMouseDown={handleTaskMouseDown}
+                  onTaskMouseUp={handleTaskMouseUp}
+                  getTaskLock={getTaskLock}
+                  isTaskLocked={isTaskLocked}
                 />
               </div>
             ))}
@@ -268,7 +332,7 @@ export const TaskBoard = ({ projectId }: TaskBoardProps) => {
         <TaskDetailDialog
           task={selectedTask}
           open={detailOpen}
-          onOpenChange={setDetailOpen}
+          onOpenChange={handleDetailDialogChange}
           projectId={projectId}
         />
       )}

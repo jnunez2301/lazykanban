@@ -78,7 +78,7 @@ export const Navbar = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="relative h-8 w-8 rounded-full">
                 <Avatar className="h-8 w-8">
-                  <AvatarImage src={`/avatars/${user.avatar ?? "avatar-1.png"}`} alt={user.name} />
+                  <AvatarImage src={`/avatars/${user.avatar || "avatar-1.png"}`} alt={user.name} />
                   <AvatarFallback>{userInitials}</AvatarFallback>
                 </Avatar>
               </Button>

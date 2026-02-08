@@ -13,13 +13,17 @@ import { cn } from "@/lib/utils";
 interface TaskCardProps {
   task: Task;
   onClick?: () => void;
-  className?: string; // Add className prop
-  style?: React.CSSProperties; // Add style prop
+  onMouseDown?: () => void;
+  onMouseUp?: () => void;
+  className?: string;
+  style?: React.CSSProperties;
   isOverlay?: boolean;
+  isLocked?: boolean;
+  lockedBy?: string;
 }
 
 // Pure UI Component
-export const TaskCard = ({ task, onClick, className, style, isOverlay }: TaskCardProps) => {
+export const TaskCard = ({ task, onClick, onMouseDown, onMouseUp, className, style, isOverlay, isLocked, lockedBy }: TaskCardProps) => {
   const priorityColor = {
     low: "bg-slate-500",
     medium: "bg-blue-500",
@@ -38,11 +42,28 @@ export const TaskCard = ({ task, onClick, className, style, isOverlay }: TaskCar
     <Card
       style={style}
       className={cn(
-        "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow bg-card/50 backdrop-blur-sm",
+        "cursor-grab active:cursor-grabbing hover:shadow-md transition-shadow bg-card/50 backdrop-blur-sm relative",
+        isLocked && "opacity-60 pointer-events-none",
         className
       )}
       onClick={onClick}
+      onMouseDown={onMouseDown}
+      onMouseUp={onMouseUp}
     >
+      {isLocked && (
+        <div className="absolute inset-0 bg-background/80 backdrop-blur-sm z-10 rounded-lg flex flex-col items-center justify-center gap-2">
+          <div className="flex gap-1">
+            <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "0ms" }} />
+            <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "150ms" }} />
+            <div className="w-2 h-2 bg-primary rounded-full animate-bounce" style={{ animationDelay: "300ms" }} />
+          </div>
+          {lockedBy && (
+            <p className="text-xs text-muted-foreground font-medium">
+              {lockedBy} is editing...
+            </p>
+          )}
+        </div>
+      )}
       <CardHeader className="p-3 pb-0 space-y-0">
         <div className="flex justify-between items-start gap-2">
           <CardTitle className="text-sm font-medium leading-tight line-clamp-2">
@@ -95,7 +116,21 @@ export const TaskCard = ({ task, onClick, className, style, isOverlay }: TaskCar
 };
 
 // Sortable Wrapper
-export const SortableTaskCard = ({ task, onClick }: { task: Task; onClick?: () => void }) => {
+export const SortableTaskCard = ({
+  task,
+  onClick,
+  onMouseDown,
+  onMouseUp,
+  isLocked,
+  lockedBy
+}: {
+  task: Task;
+  onClick?: () => void;
+  onMouseDown?: () => void;
+  onMouseUp?: () => void;
+  isLocked?: boolean;
+  lockedBy?: string;
+}) => {
   const {
     attributes,
     listeners,
@@ -103,7 +138,11 @@ export const SortableTaskCard = ({ task, onClick }: { task: Task; onClick?: () =
     transform,
     transition,
     isDragging,
-  } = useSortable({ id: task.id, data: { task } });
+  } = useSortable({
+    id: task.id,
+    data: { task },
+    disabled: isLocked
+  });
 
   const style = {
     transform: CSS.Transform.toString(transform),
@@ -122,7 +161,14 @@ export const SortableTaskCard = ({ task, onClick }: { task: Task; onClick?: () =
 
   return (
     <div ref={setNodeRef} style={style} {...attributes} {...listeners} className="touch-none">
-      <TaskCard task={task} onClick={onClick} />
+      <TaskCard
+        task={task}
+        onClick={onClick}
+        onMouseDown={onMouseDown}
+        onMouseUp={onMouseUp}
+        isLocked={isLocked}
+        lockedBy={lockedBy}
+      />
     </div>
   );
 };
