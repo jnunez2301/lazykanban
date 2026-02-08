@@ -16,6 +16,7 @@ This file contains common instructions and coding standards for the Application.
 - Use Shadcn/ui for all UI components
 - Components must be functional components using arrow functions
 - Database passwords, API Keys, sensitive information must use environment variables
+- Temporary files must be stored at .tmp
 
 ## Libraries
 - Use **TanStack Query** for data fetching and state management

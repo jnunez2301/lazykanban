@@ -72,6 +72,16 @@ export const Sidebar = () => {
                   Dashboard
                 </Link>
               </Button>
+              <Button
+                variant={pathname === "/dashboard/groups" ? "secondary" : "ghost"}
+                className="w-full justify-start"
+                asChild
+              >
+                <Link href="/dashboard/groups">
+                  <Users className="mr-2 h-4 w-4" />
+                  My Groups
+                </Link>
+              </Button>
             </div>
 
             <div className="space-y-1">
@@ -116,12 +126,6 @@ export const Sidebar = () => {
 
             <div className="space-y-1">
               <h4 className="text-sm font-semibold tracking-tight px-2 py-2">Settings</h4>
-              <Button variant="ghost" className="w-full justify-start" asChild>
-                <Link href="/settings/team">
-                  <Users className="mr-2 h-4 w-4" />
-                  Team Members
-                </Link>
-              </Button>
               <Button variant="ghost" className="w-full justify-start" asChild>
                 <Link href="/settings">
                   <Settings className="mr-2 h-4 w-4" />

@@ -39,7 +39,6 @@ export default function ProjectPage() {
       </div>
     );
   }
-  console.log(permissions?.canManageMembers)
   return (
     <div className="flex flex-col h-full space-y-4">
       <div className="flex items-center justify-between">
@@ -58,10 +57,11 @@ export default function ProjectPage() {
             </Badge>
           ))}
         </div>
-        <Link className="flex items-center gap-1.5" href={`/dashboard/projects/${id}/manage`}>
+        {/* @ts-ignore: permission is returned as a number in the backend */}
+        {permissions?.canManageMembers === 1 && <Link className="flex items-center gap-1.5" href={`/dashboard/projects/${id}/manage`}>
           <SettingsIcon className="h-4 w-4 mr-2" />
           Settings
-        </Link>
+        </Link>}
       </div>
 
       <div className="flex-1 min-h-0"> {/* Ensure content takes remaining height but doesn't overflow parent flex */}
