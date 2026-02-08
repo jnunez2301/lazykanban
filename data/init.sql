@@ -11,7 +11,8 @@ CREATE TABLE users (
   ui_mode ENUM('dev', 'regular') DEFAULT 'regular',
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
-  INDEX idx_email (email)
+  INDEX idx_email (email),
+  avatar VARCHAR(255) DEFAULT 'avatar-1.png'
 );
 
 -- Projects Table
@@ -20,10 +21,13 @@ CREATE TABLE projects (
   name VARCHAR(255) NOT NULL,
   description TEXT,
   owner_id INT NOT NULL,
+  is_pinned BOOLEAN DEFAULT FALSE,
+  pinned_at TIMESTAMP NULL,
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
   FOREIGN KEY (owner_id) REFERENCES users(id) ON DELETE CASCADE,
-  INDEX idx_owner (owner_id)
+  INDEX idx_owner (owner_id),
+  INDEX idx_projects_pinned_name (is_pinned, name)
 );
 
 -- Groups Table
