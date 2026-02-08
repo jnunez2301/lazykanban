@@ -35,7 +35,6 @@ export const Navbar = () => {
       .toUpperCase()
       .substring(0, 2)
     : "U";
-  console.log(user?.avatar);
   return (
     <nav className="border-b bg-background h-16 flex items-center px-4 sticky top-0 z-50">
       <div className="flex items-center gap-4 flex-1">

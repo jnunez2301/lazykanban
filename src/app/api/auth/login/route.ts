@@ -15,7 +15,7 @@ export async function POST(req: Request) {
 
     // Find user by email
     const [users] = await db.query(
-      "SELECT id, email, password_hash, name, ui_mode FROM users WHERE email = ?",
+      "SELECT id, email, password_hash, name, ui_mode, avatar FROM users WHERE email = ?",
       [validatedData.email]
     );
 
@@ -54,6 +54,7 @@ export async function POST(req: Request) {
         email: user.email,
         name: user.name,
         uiMode: user.ui_mode,
+        avatar: user.avatar,
       },
     });
   } catch (error) {
