@@ -51,7 +51,7 @@ const formSchema = z.object({
   description: z.string().optional(),
   priority: z.enum(["low", "medium", "high"]),
   tagId: z.string().optional(),
-  dueDate: z.string().optional(),
+  dueDate: z.string().optional().or(z.literal('')),
 });
 
 interface TaskDetailDialogProps {

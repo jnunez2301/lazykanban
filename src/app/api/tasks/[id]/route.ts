@@ -54,7 +54,7 @@ const updateTaskSchema = z.object({
   assigneeId: z.number().nullable().optional(),
   tagId: z.number().nullable().optional(),
   priority: z.enum(["low", "medium", "high"]).optional(),
-  dueDate: z.string().nullable().optional(),
+  due_date: z.string().nullable().optional(),
 });
 
 // Update task
@@ -139,9 +139,9 @@ async function handlePATCH(req: AuthRequest, { params }: Params) {
       values.push(validatedData.priority);
     }
 
-    if (validatedData.dueDate !== undefined) {
+    if (validatedData.due_date !== undefined) {
       updates.push("due_date = ?");
-      values.push(validatedData.dueDate);
+      values.push(validatedData.due_date);
     }
 
     if (updates.length === 0) {

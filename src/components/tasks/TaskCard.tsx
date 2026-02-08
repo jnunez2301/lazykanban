@@ -34,7 +34,6 @@ export const TaskCard = ({ task, onClick, className, style, isOverlay }: TaskCar
       .toUpperCase()
       .substring(0, 2)
     : "?";
-
   return (
     <Card
       style={style}
@@ -78,7 +77,7 @@ export const TaskCard = ({ task, onClick, className, style, isOverlay }: TaskCar
           {task.due_date && (
             <div className={cn("flex items-center gap-0.5", new Date(task.due_date) < new Date() && "text-destructive")}>
               <CalendarDays className="h-3 w-3" />
-              <span>{new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}</span>
+              <span>{new Date(task.due_date).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}</span>
             </div>
           )}
         </div>

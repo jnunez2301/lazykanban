@@ -44,7 +44,7 @@ const formSchema = z.object({
     .optional(),
   priority: z.enum(["low", "medium", "high"]),
   tagId: z.string().optional(), // We handle as string in form, convert to number
-  due_date: z.string().optional(),
+  due_date: z.string().optional().or(z.literal('')), // Accept empty string as undefined
 });
 
 interface CreateTaskDialogProps {

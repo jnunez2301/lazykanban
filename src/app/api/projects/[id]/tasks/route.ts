@@ -62,7 +62,7 @@ const createTaskSchema = z.object({
   assigneeId: z.number().optional(),
   tagId: z.number().optional(),
   priority: z.enum(["low", "medium", "high"]).default("medium"),
-  dueDate: z.string().optional(),
+  due_date: z.string().optional(),
 });
 
 // Create a new task
@@ -103,7 +103,7 @@ async function handlePOST(req: AuthRequest, { params }: Params) {
         validatedData.assigneeId || null,
         validatedData.tagId || null,
         validatedData.priority,
-        validatedData.dueDate || null,
+        validatedData.due_date || null,
       ]
     );
 
