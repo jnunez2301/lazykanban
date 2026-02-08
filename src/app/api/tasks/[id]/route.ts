@@ -65,23 +65,42 @@ async function handlePATCH(req: AuthRequest, { params }: Params) {
     const body = await req.json();
     const validatedData = updateTaskSchema.parse(body);
 
-    // Check if user has permission to edit tasks
-    const [permissions] = await db.query<RowDataPacket[]>(
-      `SELECT t.assignee_id, p.can_edit_tasks
+    // Owner-first permission check: project owner can always edit
+    const [ownerCheck] = await db.query<RowDataPacket[]>(
+      `SELECT pr.owner_id, t.owner_id as task_owner_id, t.assignee_id
        FROM tasks t
        JOIN projects pr ON t.project_id = pr.id
-       JOIN \`groups\` g ON g.project_id = pr.id
-       JOIN group_members gm ON gm.group_id = g.id
-       JOIN permissions p ON p.group_id = g.id
-       WHERE t.id = ? AND gm.user_id = ? AND (t.owner_id = ? OR t.assignee_id = ? OR p.can_edit_tasks = true)`,
-      [id, userId, userId, userId]
+       WHERE t.id = ?`,
+      [id]
     );
 
-    if (permissions.length === 0) {
+    if (ownerCheck.length === 0) {
       return NextResponse.json(
-        { error: "Permission denied" },
-        { status: 403 }
+        { error: "Task not found" },
+        { status: 404 }
       );
+    }
+
+    const isProjectOwner = ownerCheck[0].owner_id === userId;
+
+    // If not project owner, check for can_edit_tasks permission
+    if (!isProjectOwner) {
+      const [permissions] = await db.query<RowDataPacket[]>(
+        `SELECT p.can_edit_tasks
+         FROM tasks t
+         JOIN projects pr ON t.project_id = pr.id
+         JOIN \`groups\` g ON g.project_id = pr.id
+         JOIN group_members gm ON gm.group_id = g.id
+         JOIN permissions p ON p.group_id = g.id
+         WHERE t.id = ? AND gm.user_id = ? AND p.can_edit_tasks = true`,
+        [id, userId]
+      );
+      if (permissions.length === 0) {
+        return NextResponse.json(
+          { error: "Permission denied - you need can_edit_tasks permission" },
+          { status: 403 }
+        );
+      }
     }
 
     const updates: string[] = [];
@@ -176,23 +195,43 @@ async function handleDELETE(req: AuthRequest, { params }: Params) {
     const { id } = await params;
     const userId = req.user!.userId;
 
-    // Check if user has permission to delete tasks
-    const [permissions] = await db.query<RowDataPacket[]>(
-      `SELECT p.can_delete_tasks
+    // Owner-first permission check: project owner can always delete
+    const [ownerCheck] = await db.query<RowDataPacket[]>(
+      `SELECT pr.owner_id, t.owner_id as task_owner_id
        FROM tasks t
        JOIN projects pr ON t.project_id = pr.id
-       JOIN \`groups\` g ON g.project_id = pr.id
-       JOIN group_members gm ON gm.group_id = g.id
-       JOIN permissions p ON p.group_id = g.id
-       WHERE t.id = ? AND gm.user_id = ? AND (t.owner_id = ? OR p.can_delete_tasks = true)`,
-      [id, userId, userId]
+       WHERE t.id = ?`,
+      [id]
     );
 
-    if (permissions.length === 0) {
+    if (ownerCheck.length === 0) {
       return NextResponse.json(
-        { error: "Permission denied" },
-        { status: 403 }
+        { error: "Task not found" },
+        { status: 404 }
       );
+    }
+
+    const isProjectOwner = ownerCheck[0].owner_id === userId;
+
+    // If not project owner, check for can_delete_tasks permission
+    if (!isProjectOwner) {
+      const [permissions] = await db.query<RowDataPacket[]>(
+        `SELECT p.can_delete_tasks
+         FROM tasks t
+         JOIN projects pr ON t.project_id = pr.id
+         JOIN \`groups\` g ON g.project_id = pr.id
+         JOIN group_members gm ON gm.group_id = g.id
+         JOIN permissions p ON p.group_id = g.id
+         WHERE t.id = ? AND gm.user_id = ? AND p.can_delete_tasks = true`,
+        [id, userId]
+      );
+
+      if (permissions.length === 0) {
+        return NextResponse.json(
+          { error: "Permission denied - you need can_delete_tasks permission" },
+          { status: 403 }
+        );
+      }
     }
 
     await db.query("DELETE FROM tasks WHERE id = ?", [id]);

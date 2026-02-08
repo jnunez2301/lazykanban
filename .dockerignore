@@ -29,6 +29,10 @@ coverage/
 
 # Agent
 .agent/
+.tmp/
+directives/
+execution/
+AGENTS.md
 
 # Documentation
 README.md

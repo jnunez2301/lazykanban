@@ -42,5 +42,6 @@ data/mysql/
 # Misc
 .cache/
 .temp/
+.tmp/
 
 /src/generated/prisma
