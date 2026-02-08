@@ -241,7 +241,7 @@ export function TaskDetailDialog({ task, open, onOpenChange, projectId }: TaskDe
                   <AlertDialogHeader>
                     <AlertDialogTitle>Delete Task</AlertDialogTitle>
                     <AlertDialogDescription>
-                      Are you sure you want to delete "{task.title}"? This action cannot be undone.
+                      Are you sure you want to delete "{task.title.length > 20 ? task.title.substring(0, 20) + "..." : task.title}"? This action cannot be undone.
                     </AlertDialogDescription>
                   </AlertDialogHeader>
                   <AlertDialogFooter>
