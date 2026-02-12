@@ -8,7 +8,7 @@ services:
       MYSQL_USER: ${MYSQL_USER}
       MYSQL_PASSWORD: ${MYSQL_PASSWORD}
     volumes:
-      - mysql_data:/var/lib/mysql
+      - ./data/mysql:/var/lib/mysql
       - ./data/init.sql:/docker-entrypoint-initdb.d/init.sql:ro
     networks:
       - lazykanban-network
@@ -17,11 +17,10 @@ services:
       interval: 10s
       timeout: 5s
       retries: 5
+    restart: always
 
   frontend:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/jnunez2301/lazykanban:latest
     container_name: lazykanban-frontend
     environment:
       NODE_ENV: production
@@ -41,6 +40,7 @@ services:
       - "traefik.http.routers.lazykanban.rule=Host(`${DOMAIN:-localhost}`)"
       - "traefik.http.routers.lazykanban.entrypoints=web"
       - "traefik.http.services.lazykanban.loadbalancer.server.port=3000"
+    restart: always
 
   traefik:
     image: traefik:v2.11
@@ -56,10 +56,8 @@ services:
       - /var/run/docker.sock:/var/run/docker.sock:ro
     networks:
       - lazykanban-network
+    restart: always
 
 networks:
   lazykanban-network:
     driver: bridge
-
-volumes:
-  mysql_data:
